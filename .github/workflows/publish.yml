@@ -1,0 +1,23 @@
+name: Publish installers
+on:
+  push:
+    branches: [main]
+    paths: [latest.json]
+permissions:
+  contents: write
+concurrency:
+  group: publish-installers
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Publish signed packages
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="v$(node -p 'JSON.parse(require("fs").readFileSync("latest.json")).version')"
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" || gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --draft --title "FrameForge $TAG" --notes "Signed FrameForge installers. Source code remains private."
+          gh release upload "$TAG" packages/* latest.json --clobber --repo "$GITHUB_REPOSITORY"
+          gh release edit "$TAG" --draft=false --latest --repo "$GITHUB_REPOSITORY"
